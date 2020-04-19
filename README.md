@@ -23,11 +23,47 @@ Flags:
   -p, --project SPANNER_PROJECT_ID     your-project-id. (you can also set by SPANNER_PROJECT_ID)
 ```
 
-# Example
+# Installation
+
+```
+go install github.com/matope/ratchet
+```
+
+# How to use
+
+```bash
+# you can also set by -p, -i, -d
+$ export SPANNER_PROJECT_ID=<your-project-id>
+$ export SPANNER_INSTANCE_ID=<your-instance-id>
+$ export SPANNER_DATABASE_ID=<your-database-id>
+
+# Set if you use spanner-emulator such like handy-spanner.
+$ export SPANNER_EMULATOR_HOST=localhost:9999
+
+$ ratchet exec "SELECT * FROM information_schema.tables"
+db: projects/fake/instances/fake/databases/fake
+SPANNER_EMULATOR_HOST: localhost:9999
+
+sql:SELECT * FROM information_schema.tables
++---------------+--------------------+----------------+-------------------+------------------+---------------+
+| TABLE_CATALOG |    TABLE_SCHEMA    |   TABLE_NAME   | PARENT_TABLE_NAME | ON_DELETE_ACTION | SPANNER_STATE |
++---------------+--------------------+----------------+-------------------+------------------+---------------+
+|               | INFORMATION_SCHEMA | SCHEMATA       |                   |                  |               |
+|               | INFORMATION_SCHEMA | TABLES         |                   |                  |               |
+|               | INFORMATION_SCHEMA | COLUMNS        |                   |                  |               |
+|               | INFORMATION_SCHEMA | INDEXES        |                   |                  |               |
+|               | INFORMATION_SCHEMA | INDEX_COLUMNS  |                   |                  |               |
+|               | INFORMATION_SCHEMA | COLUMN_OPTIONS |                   |                  |               |
+|               |                    | Singers        |                   |                  | COMMITTED     |
+|               |                    | Albums         | Singers           | CASCADE          | COMMITTED     |
+|               |                    | Examples       |                   |                  | COMMITTED     |
++---------------+--------------------+----------------+-------------------+------------------+---------------+
+9 record(s) found.
+```
 
 ## Describe Database
 
-Using describe command, you can get Database DDL(s). (For now, handy-spanner does not yet implement it)
+Using `describe` command, you can get Database DDL(s). (For now, handy-spanner does not yet implement it)
 
 ```
 $ ratchet -p <PROJECT_ID> -i <INSTANCE_ID> -d <DATABASE> describe
@@ -57,7 +93,7 @@ CREATE TABLE Albums (
 
 ## Execute SQL(s).
 
-You can throw queries and DDL/DML SQL to Cloud Spanner.
+Using `exec` command, you can throw queries and DDL/DML SQL to Cloud Spanner.
 
 ```
 $ ratchet -p <PROJECT_ID> -i <INSTANCE_ID> -d <DATABASE> exec "SELECT * From Singers; SELECT * FROM Albums"
@@ -90,5 +126,11 @@ sql:SELECT * FROM Albums
 ## Execute SQL(s) from a file.
 
 ```
-ratchet -p <PROJECT_ID> -i <INSTANCE_ID> -d <DATABASE> exec --file ./testdata/schema.sql 
+$ cat testdata/inserts.sql
+INSERT INTO Singers(SingerId, FirstName, LastName) VALUES (1, "Marc", "Richards");
+INSERT INTO Singers(SingerId, FirstName, LastName) VALUES (2, "Catalina", "Smith");
+INSERT INTO Albums(SingerId, AlbumId, AlbumTitle) VALUES(1, 1, "Total Junk");
+INSERT INTO Albums(SingerId, AlbumId, AlbumTitle) VALUES(1, 2, "Go, Go, Go");
+
+$ ratchet -p <PROJECT_ID> -i <INSTANCE_ID> -d <DATABASE> exec --file ./testdata/inserts.sql
 ```
