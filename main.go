@@ -104,6 +104,12 @@ func describeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			log.Printf("db: %s\n", dbName)
+			if v := os.Getenv("SPANNER_EMULATOR_HOST"); v != "" {
+				log.Printf("SPANNER_EMULATOR_HOST: %s\n", v)
+			}
+			log.Println()
+
 			admin, _ := createClients(context.Background(), dbName)
 			return describe(context.Background(), os.Stdout, admin, dbName)
 		},
