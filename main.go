@@ -37,10 +37,10 @@ func rootCmd() *cobra.Command {
 		Use: "ratchet",
 		Long: `A simple client CLI for Cloud Spanner
 
-ratchet is a simple CLI tool for accessing Cloud Spanner. This tool allow you to
+ratchet is a simple CLI tool for accessing Cloud Spanner. This tool allows you to
 throw queries to the Cloud Spanner (or an emulator of that).
 
-If SPANNER_EMULATOR_HOST env is set, ratchet accepts and understands it.`,
+If SPANNER_EMULATOR_HOST env is set, ratchet uses it.`,
 		SilenceUsage: true,
 	}
 	rootCmd.PersistentFlags().StringVarP(&flgInstance, "instance", "i", "", "your-instance-id. (you can also set by `SPANNER_INSTANCE_ID`)")
@@ -64,7 +64,7 @@ func execCmd() *cobra.Command {
 			}
 
 			var sqls []string
-			if len(args) == 1 && flgFile != "" {
+			if len(args) > 2 && flgFile != "" {
 				return errors.New("Specify eather arg(sql) or --file")
 			} else if flgFile != "" {
 				if sqls, err = parseFile(flgFile); err != nil {
@@ -138,6 +138,8 @@ func dbNameFromFlagEnv() (string, error) {
 func parseFile(path string) ([]string, error) {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
+		fmt.Println(path)
+		fmt.Println(os.Getwd())
 		return nil, err
 	}
 	return parseSqls(string(content)), nil
