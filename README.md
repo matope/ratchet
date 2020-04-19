@@ -7,7 +7,7 @@ throw queries to the Cloud Spanner (or an emulator of that).
 
 If `SPANNER_EMULATOR_HOST` env is set, ratchet uses it.
 
-``
+```
 Usage:
   ratchet [command]
 
