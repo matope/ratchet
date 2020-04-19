@@ -15,4 +15,4 @@ INTERLEAVE IN PARENT Singers ON DELETE CASCADE;
 CREATE TABLE Examples (
   ID STRING(1024),
   LastUpdateTime  TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (ID)
+) PRIMARY KEY (ID);

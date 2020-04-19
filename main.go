@@ -2,17 +2,18 @@ package main
 
 import (
 	"context"
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	"cloud.google.com/go/spanner"
+	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/tablewriter"
+	"github.com/spf13/cobra"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 
@@ -21,73 +22,135 @@ import (
 )
 
 var (
-	flgProject  = flag.String("project", "fake", "project name")
-	flgInstance = flag.String("instance", "fake", "instance name")
-	flgDatabase = flag.String("database", "fake", "database name")
-	flgSql      = flag.String("sql", "", "SQL statement")
-	flgFile     = flag.String("file", "", "filepath which contains sqls")
+	flgProject  string
+	flgInstance string
+	flgDatabase string
 )
 
 func main() {
-	flag.Parse()
+	log.SetFlags(0)
+	rootCmd().Execute()
+}
 
-	if *flgFile != "" && *flgSql != "" {
-		log.Fatal("You can't specify both flags of -sql and -file.")
+func rootCmd() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use: "ratchet",
+		Long: `A simple client CLI for Cloud Spanner
+
+ratchet is a simple CLI tool for accessing Cloud Spanner. This tool allow you to
+throw queries to the Cloud Spanner (or an emulator of that).
+
+If SPANNER_EMULATOR_HOST env is set, ratchet accepts and understands it.`,
+		SilenceUsage: true,
 	}
-	dbName := fmt.Sprintf("projects/%s/instances/%s/databases/%s", *flgProject, *flgInstance, *flgDatabase)
+	rootCmd.PersistentFlags().StringVarP(&flgInstance, "instance", "i", "", "your-instance-id. (you can also set by `SPANNER_INSTANCE_ID`)")
+	rootCmd.PersistentFlags().StringVarP(&flgProject, "project", "p", "", "your-project-id. (you can also set by `SPANNER_PROJECT_ID`)")
+	rootCmd.PersistentFlags().StringVarP(&flgDatabase, "database", "d", "", "your-database-id. (you can also set by `SPANNER_DATABASE_ID`)")
+	rootCmd.AddCommand(execCmd())
+	rootCmd.AddCommand(describeCmd())
+	return rootCmd
+}
 
-	sqls := []string{*flgSql}
+func execCmd() *cobra.Command {
+	var flgFile string
+	execCmd := &cobra.Command{
+		Use:   "exec [flags] [SQL]",
+		Short: "Throw specified SQL(s) to Cloud Spanner.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dbName, err := dbNameFromFlagEnv()
+			if err != nil {
+				return err
+			}
 
-	if *flgFile != "" {
-		content, err := ioutil.ReadFile(*flgFile)
-		if err != nil {
-			log.Fatal(err)
-		}
+			var sqls []string
+			if len(args) == 1 && flgFile != "" {
+				return errors.New("Specify eather arg(sql) or --file")
+			} else if flgFile != "" {
+				if sqls, err = parseFile(flgFile); err != nil {
+					return err
+				}
+			} else if len(args) > 0 {
+				sqls = parseSqls(args[0])
+			} else {
+				return errors.New("Specify either arg(sql) or --file")
+			}
 
-		for _, v := range strings.Split(string(content), ";") {
-			sqls = append(sqls, strings.TrimSpace(v))
-		}
+			log.Printf("db: %s\n", dbName)
+			if v := os.Getenv("SPANNER_EMULATOR_HOST"); v != "" {
+				log.Printf("SPANNER_EMULATOR_HOST: %s\n", v)
+			}
+			log.Println()
+
+			admin, cli := createClients(context.Background(), dbName)
+			for _, sql := range sqls {
+				if err := exec(context.Background(), os.Stdout, admin, cli, dbName, sql); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
 	}
+	execCmd.Flags().StringVarP(&flgFile, "file", "f", "", "filepath which contains SQL(s). If '-', read from STDIN.")
+	return execCmd
+}
 
-	fmt.Printf("db:[%s]\n", dbName)
-	fmt.Printf("file:[%s]\n", *flgFile)
-	fmt.Printf("SPANNER_EMULATOR_HOST:[%s]\n", os.Getenv("SPANNER_EMULATOR_HOST"))
-
-	admin, cli := createClients(context.Background(), dbName)
-
-	for _, sql := range sqls {
-		if sql == "" {
-			continue
-		}
-		if err := executeSQL(context.Background(), os.Stdout, admin, cli, dbName, sql); err != nil {
-			log.Fatal(err)
-		}
+func describeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "describe",
+		Short: "Show Database DDLs.",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dbName, err := dbNameFromFlagEnv()
+			if err != nil {
+				return err
+			}
+			admin, _ := createClients(context.Background(), dbName)
+			return describe(context.Background(), os.Stdout, admin, dbName)
+		},
 	}
 }
 
-func executeSQL(ctx context.Context, w io.Writer, admin *database.DatabaseAdminClient, cli *spanner.Client, dbName, sql string) error {
-	fmt.Printf("sql:[%s]\n", sql)
-	fmt.Println("")
-
-	switch token := strings.ToUpper(strings.Split(sql, " ")[0]); token {
-	case "SELECT":
-		return query(ctx, w, cli, sql)
-	case
-		"INSERT",
-		"DELETE",
-		"UPDATE":
-		return dml(ctx, w, cli, sql)
-	case
-		"CREATE",
-		"ALTER",
-		"DROP":
-		return updateDatabaseDdl(ctx, w, admin, dbName, sql)
-	case
-		"DESCRIBE":
-		return describe(ctx, w, admin, dbName)
-	default:
-		return fmt.Errorf("unsupported SQL statement: [%s]", sql)
+func dbNameFromFlagEnv() (string, error) {
+	flgOrEnv := func(flg, env string) string {
+		if flg != "" {
+			return flg
+		}
+		return env
 	}
+	var (
+		project  = flgOrEnv(flgProject, os.Getenv("SPANNER_PROJECT_ID"))
+		instance = flgOrEnv(flgInstance, os.Getenv("SPANNER_INSTANCE_ID"))
+		database = flgOrEnv(flgDatabase, os.Getenv("SPANNER_DATABASE_ID"))
+	)
+	if project == "" {
+		return "", errors.New("Please specify project by -p, --project or SPANNER_PROJECT_ID")
+	}
+	if instance == "" {
+		return "", errors.New("Please specify instance by -i, --instance or SPANNER_INSTANCE_ID")
+	}
+	if database == "" {
+		return "", errors.New("Please specify database by -s, --database or SPANNER_DATABASE_ID")
+	}
+	return fmt.Sprintf("projects/%s/instances/%s/databases/%s", project, instance, database), nil
+}
+
+func parseFile(path string) ([]string, error) {
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return parseSqls(string(content)), nil
+}
+
+func parseSqls(s string) []string {
+	sqls := make([]string, 0)
+	for _, v := range strings.Split(s, ";") {
+		if sql := strings.TrimSpace(v); sql != "" {
+			sqls = append(sqls, sql)
+		}
+	}
+	return sqls
 }
 
 func createClients(ctx context.Context, db string, opts ...option.ClientOption) (*database.DatabaseAdminClient, *spanner.Client) {
@@ -100,23 +163,7 @@ func createClients(ctx context.Context, db string, opts ...option.ClientOption) 
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	return adminClient, dataClient
-}
-
-func updateDatabaseDdl(ctx context.Context, w io.Writer, adminClient *database.DatabaseAdminClient, dbName, sql string) error {
-	op, err := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
-		Database:   dbName,
-		Statements: []string{sql},
-	})
-	if err != nil {
-		return err
-	}
-	if err := op.Wait(ctx); err != nil {
-		return err
-	}
-	fmt.Fprintf(w, "Updatad database.\n")
-	return nil
 }
 
 func describe(ctx context.Context, w io.Writer, adminClient *database.DatabaseAdminClient, dbName string) error {
@@ -134,6 +181,39 @@ func describe(ctx context.Context, w io.Writer, adminClient *database.DatabaseAd
 	return nil
 }
 
+func exec(ctx context.Context, w io.Writer, admin *database.DatabaseAdminClient, cli *spanner.Client, dbName, sql string) error {
+	log.Printf("sql:%s\n", sql)
+	defer log.Println()
+
+	switch token := strings.ToUpper(strings.Split(sql, " ")[0]); token {
+	case "SELECT":
+		return query(ctx, w, cli, sql)
+	case
+		"INSERT", "DELETE", "UPDATE":
+		return dml(ctx, w, cli, sql)
+	case
+		"CREATE", "ALTER", "DROP":
+		return updateDatabaseDdl(ctx, w, admin, dbName, sql)
+	default:
+		return fmt.Errorf("unsupported SQL statement: [%s]", sql)
+	}
+}
+
+func updateDatabaseDdl(ctx context.Context, w io.Writer, adminClient *database.DatabaseAdminClient, dbName, sql string) error {
+	op, err := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+		Database:   dbName,
+		Statements: []string{sql},
+	})
+	if err != nil {
+		return err
+	}
+	if err := op.Wait(ctx); err != nil {
+		return err
+	}
+	fmt.Fprintf(w, "updatad database.\n")
+	return nil
+}
+
 func dml(ctx context.Context, w io.Writer, client *spanner.Client, sql string) error {
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{SQL: sql}
@@ -141,7 +221,7 @@ func dml(ctx context.Context, w io.Writer, client *spanner.Client, sql string) e
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(w, "%d record(s) inserted.\n", rowCount)
+		fmt.Fprintf(w, "%d record(s) affected.\n", rowCount)
 		return nil
 	})
 	return err
@@ -173,7 +253,8 @@ func query(ctx context.Context, w io.Writer, client *spanner.Client, sql string)
 		}
 		rows = append(rows, cols)
 	}
-	printTableExpand(w, colNames, rows)
+	printTable(w, colNames, rows)
+	log.Printf("%d record(s) found.\n", len(rows))
 	return nil
 }
 
@@ -181,20 +262,12 @@ func printTable(w io.Writer, colNames []string, rows [][]string) {
 	table := tablewriter.NewWriter(w)
 	table.SetAutoFormatHeaders(false)
 	table.SetHeader(colNames)
-	table.AppendBulk(rows)
-	table.Render()
-}
-
-func printTableExpand(w io.Writer, colNames []string, rows [][]string) {
-	for i, row := range rows {
-		fmt.Fprintf(w, "@ Row %d\n", i)
-
-		// Observe how the b's and the d's, despite appearing in the
-		// second cell of each line, belong to different columns.
-		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', tabwriter.Debug)
-		for j := range row {
-			fmt.Fprintf(tw, "  %s\t%s\n", colNames[j], row[j])
+	for _, row := range rows {
+		cols := make([]string, 0, len(row))
+		for _, row := range row {
+			cols = append(cols, runewidth.Wrap(row, tablewriter.MAX_ROW_WIDTH))
 		}
-		tw.Flush()
+		table.Append(cols)
 	}
+	table.Render()
 }

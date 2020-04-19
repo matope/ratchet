@@ -1,0 +1,10 @@
+INSERT INTO Singers(SingerId, FirstName, LastName) VALUES (1, "Marc", "Richards");
+INSERT INTO Singers(SingerId, FirstName, LastName) VALUES (2, "Catalina", "Smith");
+INSERT INTO Singers(SingerId, FirstName, LastName) VALUES (3, "Alice", "Trentor");
+INSERT INTO Singers(SingerId, FirstName, LastName) VALUES (4, "Lea", "Martin");
+INSERT INTO Singers(SingerId, FirstName, LastName) VALUES (5, "David", "Lomond");
+INSERT INTO Albums(SingerId, AlbumId, AlbumTitle) VALUES(1, 1, "Total Junk");
+INSERT INTO Albums(SingerId, AlbumId, AlbumTitle) VALUES(1, 2, "Go, Go, Go");
+INSERT INTO Albums(SingerId, AlbumId, AlbumTitle) VALUES(2, 1, "Green");
+INSERT INTO Albums(SingerId, AlbumId, AlbumTitle) VALUES(2, 2, "Forever Hold Your Peace");
+INSERT INTO Albums(SingerId, AlbumId, AlbumTitle) VALUES(2, 3, "Terrified");
