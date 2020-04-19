@@ -28,7 +28,7 @@ go install github.com/matope/ratchet
 
 # How to use
 
-```bash
+```
 # you can also set by -p, -i, -d
 $ export SPANNER_PROJECT_ID=<your-project-id>
 $ export SPANNER_INSTANCE_ID=<your-instance-id>
