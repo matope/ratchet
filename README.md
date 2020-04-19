@@ -1,7 +1,5 @@
 # Ratchet
 
-A simple client CLI for Cloud Spanner
-
 ratchet is a simple CLI tool for accessing Cloud Spanner. This tool allows you to
 throw queries to the Cloud Spanner (or an emulator of that).
 
