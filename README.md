@@ -1,9 +1,8 @@
 # Ratchet
 
 ratchet is a simple CLI tool for accessing Cloud Spanner. This tool allows you to
-throw queries to the Cloud Spanner (or an emulator of that).
-
-If `SPANNER_EMULATOR_HOST` env is set, ratchet uses it.
+throw queries to the Cloud Spanner (or an emulator of that). If `SPANNER_EMULATOR_HOST`
+env is set, ratchet uses it.
 
 ```
 Usage:

@@ -38,9 +38,8 @@ func rootCmd() *cobra.Command {
 		Long: `A simple client CLI for Cloud Spanner
 
 ratchet is a simple CLI tool for accessing Cloud Spanner. This tool allows you to
-throw queries to the Cloud Spanner (or an emulator of that).
-
-If SPANNER_EMULATOR_HOST env is set, ratchet uses it.`,
+throw queries to the Cloud Spanner (or an emulator of that).  If SPANNER_EMULATOR_HOST
+env is set, ratchet uses it.`,
 		SilenceUsage: true,
 	}
 	rootCmd.PersistentFlags().StringVarP(&flgInstance, "instance", "i", "", "your-instance-id. (you can also set by `SPANNER_INSTANCE_ID`)")
