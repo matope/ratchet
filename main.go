@@ -195,11 +195,9 @@ func exec(ctx context.Context, w io.Writer, admin *database.DatabaseAdminClient,
 	switch token := strings.ToUpper(strings.Split(sql, " ")[0]); token {
 	case "SELECT":
 		return query(ctx, w, cli, sql)
-	case
-		"INSERT", "DELETE", "UPDATE":
+	case "INSERT", "DELETE", "UPDATE":
 		return dml(ctx, w, cli, sql)
-	case
-		"CREATE", "ALTER", "DROP":
+	case "CREATE", "ALTER", "DROP":
 		return updateDatabaseDdl(ctx, w, admin, dbName, sql)
 	default:
 		return fmt.Errorf("unsupported SQL statement: [%s]", sql)
