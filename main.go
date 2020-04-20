@@ -264,6 +264,9 @@ func query(ctx context.Context, w io.Writer, client *spanner.Client, sql string)
 }
 
 func printTable(w io.Writer, colNames []string, rows [][]string) {
+	if len(rows) == 0 {
+		return
+	}
 	table := tablewriter.NewWriter(w)
 	table.SetAutoFormatHeaders(false)
 	table.SetHeader(colNames)
