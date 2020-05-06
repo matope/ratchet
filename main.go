@@ -52,6 +52,7 @@ env is set, ratchet uses it.`,
 
 func execCmd() *cobra.Command {
 	var flgFile string
+	var flgForce bool
 	execCmd := &cobra.Command{
 		Use:   "exec [flags] [SQL]",
 		Short: "Throw specified SQL(s) to Cloud Spanner.",
@@ -84,13 +85,18 @@ func execCmd() *cobra.Command {
 			admin, cli := createClients(context.Background(), dbName)
 			for _, sql := range sqls {
 				if err := exec(context.Background(), os.Stdout, admin, cli, dbName, sql); err != nil {
-					return err
+					if flgForce {
+						log.Printf("exec error: %s\n", err.Error())
+					} else {
+						return err
+					}
 				}
 			}
 			return nil
 		},
 	}
 	execCmd.Flags().StringVarP(&flgFile, "file", "f", "", "filepath which contains SQL(s). If '-', read from STDIN.")
+	execCmd.Flags().BoolVarP(&flgForce, "force", "", false, "ignore execution error.")
 	return execCmd
 }
 
