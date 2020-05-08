@@ -9,9 +9,10 @@ Usage:
   ratchet [command]
 
 Available Commands:
-  describe    Show Database DDLs.
-  exec        Throw specified SQL(s) to Cloud Spanner.
-  help        Help about any command
+  describe        Show Database DDLs.
+  drop-all-tables Drop all tables
+  exec            Throw specified SQL(s) to Cloud Spanner.
+  help            Help about any command
 
 Flags:
   -d, --database SPANNER_DATABASE_ID   your-database-id. (you can also set by SPANNER_DATABASE_ID)
