@@ -91,16 +91,16 @@ func exec(ctx context.Context, w io.Writer, admin *database.DatabaseAdminClient,
 	case "INSERT", "DELETE", "UPDATE":
 		return dml(ctx, w, cli, sql)
 	case "CREATE", "ALTER", "DROP":
-		return updateDatabaseDdl(ctx, w, admin, dbName, sql)
+		return updateDatabaseDdls(ctx, w, admin, dbName, sql)
 	default:
 		return fmt.Errorf("unsupported SQL statement: [%s]", sql)
 	}
 }
 
-func updateDatabaseDdl(ctx context.Context, w io.Writer, adminClient *database.DatabaseAdminClient, dbName, sql string) error {
+func updateDatabaseDdls(ctx context.Context, w io.Writer, adminClient *database.DatabaseAdminClient, dbName string, sqls ...string) error {
 	op, err := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
 		Database:   dbName,
-		Statements: []string{sql},
+		Statements: sqls,
 	})
 	if err != nil {
 		return err

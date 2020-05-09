@@ -24,5 +24,6 @@ env is set, ratchet uses it.`,
 	rootCmd.AddCommand(execCmd())
 	rootCmd.AddCommand(describeCmd())
 	rootCmd.AddCommand(dropAllTablesCmd())
+	rootCmd.AddCommand(loadCmd())
 	return rootCmd
 }

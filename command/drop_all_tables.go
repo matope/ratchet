@@ -34,12 +34,12 @@ func dropAllTablesCmd() *cobra.Command {
 				}
 				for _, i := range indexes.rows {
 					log.Printf("Dropping index: %s\n", i[0])
-					if err := updateDatabaseDdl(ctx, os.Stdout, admin, dbName, "DROP INDEX "+i[0]); err != nil {
+					if err := updateDatabaseDdls(ctx, os.Stdout, admin, dbName, "DROP INDEX "+i[0]); err != nil {
 						return err
 					}
 				}
 				log.Printf("Dropping table: %s\n", t[0])
-				if err := updateDatabaseDdl(context.Background(), os.Stdout, admin, dbName, "DROP TABLE "+t[0]); err != nil {
+				if err := updateDatabaseDdls(context.Background(), os.Stdout, admin, dbName, "DROP TABLE "+t[0]); err != nil {
 					return err
 				}
 			}
