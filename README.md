@@ -13,6 +13,7 @@ Available Commands:
   drop-all-tables Drop all tables
   exec            Throw specified SQL(s) to Cloud Spanner.
   help            Help about any command
+  load            Load applies DDLs to Cloud Spanner using a single transaction. If you apply many DDLs, 'load' would be way much faster than 'exec'.
 
 Flags:
   -d, --database SPANNER_DATABASE_ID   your-database-id. (you can also set by SPANNER_DATABASE_ID)
