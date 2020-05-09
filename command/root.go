@@ -1,4 +1,4 @@
-package main
+package command
 
 import "github.com/spf13/cobra"
 
@@ -8,7 +8,7 @@ var (
 	flgDatabase string
 )
 
-func rootCmd() *cobra.Command {
+func RootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "ratchet",
 		Long: `A simple client CLI for Cloud Spanner

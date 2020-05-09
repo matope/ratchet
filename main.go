@@ -2,9 +2,11 @@ package main
 
 import (
 	"log"
+
+	"github.com/matope/ratchet/command"
 )
 
 func main() {
 	log.SetFlags(0)
-	rootCmd().Execute()
+	command.RootCmd().Execute()
 }
